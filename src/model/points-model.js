@@ -75,13 +75,23 @@ export default class PointsModel extends Observable {
     }
   }
 
-  addPoint(updateType, newPoint) {
-    this.points = [newPoint, ...this.points];
-    this._notify(updateType, newPoint);
+  async addPoint(updateType, newPoint) {
+    try {
+      const createdPoint = await this.#apiService.createPoint(newPoint);
+      this.points = [createdPoint, ...this.points];
+      this._notify(updateType, createdPoint);
+    } catch {
+      throw new Error('Can\'t add point');
+    }
   }
 
-  deletePoint(updateType, pointToDelete) {
-    this.points = this.points.filter((point) => point.id !== pointToDelete.id);
-    this._notify(updateType);
+  async deletePoint(updateType, pointToDelete) {
+    try {
+      await this.#apiService.deletePoint(pointToDelete);
+      this.points = this.points.filter((point) => point.id !== pointToDelete.id);
+      this._notify(updateType);
+    } catch {
+      throw new Error('Can\'t delete point');
+    }
   }
 }

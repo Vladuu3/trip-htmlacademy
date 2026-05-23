@@ -7,8 +7,12 @@ import {render, remove} from '../framework/render.js';
 import dayjs from 'dayjs';
 import PointPresenter from './point-presenter.js';
 import NewPointPresenter from './new-point-presenter.js';
+import UiBlocker from '../framework/ui-blocker/ui-blocker.js';
 import {filter} from '../utils/filter.js';
 import {FilterType, SortType, UpdateType, UserAction} from '../const.js';
+
+const UI_BLOCKER_LOWER_LIMIT = 0;
+const UI_BLOCKER_UPPER_LIMIT = 500;
 
 const sortPointByDay = (pointA, pointB) => dayjs(pointA.dateFrom).diff(dayjs(pointB.dateFrom));
 const sortPointByPrice = (pointA, pointB) => pointB.basePrice - pointA.basePrice;
@@ -29,6 +33,10 @@ export default class BoardPresenter {
 
   #currentSortType = SortType.DAY;
   #sortComponent = null;
+  #uiBlocker = new UiBlocker({
+    lowerLimit: UI_BLOCKER_LOWER_LIMIT,
+    upperLimit: UI_BLOCKER_UPPER_LIMIT,
+  });
 
   #handleSortTypeChange = (sortType) => {
     if (this.#currentSortType === sortType) {
@@ -130,22 +138,24 @@ export default class BoardPresenter {
   }
 
   #handleViewAction = async (actionType, updateType, update) => {
-    switch (actionType) {
-      case UserAction.UPDATE_POINT:
-        try {
+    this.#uiBlocker.block();
+
+    try {
+      switch (actionType) {
+        case UserAction.UPDATE_POINT:
           await this.#pointsModel.updatePoint(updateType, update);
-        } catch {
-          // Will add user feedback for failed requests in the next task.
-        }
-        break;
-      case UserAction.ADD_POINT:
-        this.#pointsModel.addPoint(updateType, update);
-        break;
-      case UserAction.DELETE_POINT:
-        this.#pointsModel.deletePoint(updateType, update);
-        break;
-      default:
-        throw new Error('Unknown user action');
+          break;
+        case UserAction.ADD_POINT:
+          await this.#pointsModel.addPoint(updateType, update);
+          break;
+        case UserAction.DELETE_POINT:
+          await this.#pointsModel.deletePoint(updateType, update);
+          break;
+        default:
+          throw new Error('Unknown user action');
+      }
+    } finally {
+      this.#uiBlocker.unblock();
     }
   };
 
