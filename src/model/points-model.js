@@ -1,15 +1,40 @@
-import {getMockPoints} from '../mock/points.js';
-import {mockDestinations} from '../mock/destinations.js';
-import {mockOffers} from '../mock/offers.js';
 import Observable from '../framework/observable.js';
+import {UpdateType} from '../const.js';
 
 export default class PointsModel extends Observable {
-  points = getMockPoints();
-  destinations = mockDestinations;
-  offers = mockOffers;
+  points = [];
+  destinations = [];
+  offers = [];
+  isLoading = true;
+  hasLoadingError = false;
+  #apiService = null;
 
-  constructor() {
+  constructor({apiService}) {
     super();
+    this.#apiService = apiService;
+  }
+
+  async init() {
+    try {
+      const [points, destinations, offers] = await Promise.all([
+        this.#apiService.points(),
+        this.#apiService.destinations(),
+        this.#apiService.offers(),
+      ]);
+
+      this.points = points;
+      this.destinations = destinations;
+      this.offers = offers;
+      this.hasLoadingError = false;
+    } catch {
+      this.points = [];
+      this.destinations = [];
+      this.offers = [];
+      this.hasLoadingError = true;
+    }
+
+    this.isLoading = false;
+    this._notify(UpdateType.INIT);
   }
 
   getPoints() {
@@ -29,9 +54,25 @@ export default class PointsModel extends Observable {
     return this.offers;
   }
 
-  updatePoint(updateType, updatedPoint) {
-    this.points = this.points.map((point) => (point.id === updatedPoint.id ? updatedPoint : point));
-    this._notify(updateType, updatedPoint);
+  async updatePoint(updateType, updatedPoint) {
+    try {
+      const responsePoint = await this.#apiService.updatePoint(updatedPoint);
+      const index = this.points.findIndex((point) => point.id === responsePoint.id);
+
+      if (index === -1) {
+        throw new Error('Can\'t update unexisting point');
+      }
+
+      this.points = [
+        ...this.points.slice(0, index),
+        responsePoint,
+        ...this.points.slice(index + 1),
+      ];
+
+      this._notify(updateType, responsePoint);
+    } catch {
+      throw new Error('Can\'t update point');
+    }
   }
 
   addPoint(updateType, newPoint) {

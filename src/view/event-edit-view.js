@@ -1,5 +1,5 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
-import {TYPES} from '../mock/offers.js';
+import {EventType} from '../const.js';
 import dayjs from 'dayjs';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
@@ -78,7 +78,7 @@ function createEventEditDestinationTemplate(destination) {
 function createEventEditTemplate(point, allDestinations, allOffers) {
   const {type, basePrice, dateFrom, dateTo, destination, offers} = point;
 
-  const typeListTemplate = TYPES.map((item) => (
+  const typeListTemplate = EventType.map((item) => (
     `<div class="event__type-item">
       <input id="event-type-${item}-1" class="event__type-input  visually-hidden" type="radio" name="event-type" value="${item}" ${item === type ? 'checked' : ''}>
       <label class="event__type-label  event__type-label--${item}" for="event-type-${item}-1">${item.charAt(0).toUpperCase() + item.slice(1)}</label>
