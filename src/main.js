@@ -1,5 +1,6 @@
 import BoardPresenter from './presenter/board-presenter.js';
 import FilterPresenter from './presenter/filter-presenter.js';
+import TripInfoPresenter from './presenter/trip-info-presenter.js';
 import PointsModel from './model/points-model.js';
 import FilterModel from './model/filter-model.js';
 import BigTripApiService from './api/big-trip-api-service.js';
@@ -23,6 +24,11 @@ const filterPresenter = new FilterPresenter({
   filterModel,
 });
 
+const tripInfoPresenter = new TripInfoPresenter({
+  container: siteHeaderElement,
+  pointsModel,
+});
+
 const boardPresenter = new BoardPresenter({
   boardContainer: siteEventsElement,
   pointsModel,
@@ -42,6 +48,7 @@ function handleNewPointFormClose() {
 newPointButtonComponent.addEventListener('click', handleNewPointButtonClick);
 
 filterPresenter.init();
+tripInfoPresenter.init();
 boardPresenter.init();
 
 newPointButtonComponent.disabled = true;
