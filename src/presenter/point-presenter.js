@@ -113,8 +113,6 @@ export default class PointPresenter {
 
   #formSubmitHandler = (updatedPoint) => {
     this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.MINOR, updatedPoint);
-    this.#replaceFormToPoint();
-    document.removeEventListener('keydown', this.#escKeyDownHandler);
   };
 
   #deleteClickHandler = (point) => {

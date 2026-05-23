@@ -18,6 +18,11 @@ export default class NewPointPresenter {
     this.#handleDestroy = onDestroy;
   }
 
+  setData({destinations, offers}) {
+    this.#destinations = destinations;
+    this.#offers = offers;
+  }
+
   init() {
     if (this.#eventEditComponent !== null) {
       return;

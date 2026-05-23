@@ -1,6 +1,8 @@
 import SortView from '../view/sort-view.js';
 import EventListView from '../view/event-list-view.js';
 import ListEmptyView from '../view/list-empty-view.js';
+import LoadingView from '../view/loading-view.js';
+import FailedLoadView from '../view/failed-load-view.js';
 import {render, remove} from '../framework/render.js';
 import dayjs from 'dayjs';
 import PointPresenter from './point-presenter.js';
@@ -17,7 +19,7 @@ export default class BoardPresenter {
   #filterModel = null;
 
   #eventListComponent = new EventListView();
-  #listEmptyComponent = null;
+  #listMessageComponent = null;
 
   #destinations = [];
   #offers = [];
@@ -49,8 +51,7 @@ export default class BoardPresenter {
   }
 
   init() {
-    this.#destinations = this.#pointsModel.getDestinations();
-    this.#offers = this.#pointsModel.getOffers();
+    this.#syncModelData();
 
     this.#newPointPresenter = new NewPointPresenter({
       pointContainer: this.#eventListComponent.element,
@@ -76,6 +77,17 @@ export default class BoardPresenter {
   }
 
   #renderBoard() {
+    if (this.#pointsModel.isLoading) {
+      this.#renderLoading();
+      return;
+    }
+
+    if (this.#pointsModel.hasLoadingError) {
+      this.#renderFailedLoad();
+      return;
+    }
+
+    this.#clearListMessage();
     render(this.#eventListComponent, this.#boardContainer);
     this.#renderSort();
     this.#renderPointList();
@@ -96,7 +108,7 @@ export default class BoardPresenter {
       return;
     }
 
-    this.#clearEmptyList();
+    this.#clearListMessage();
 
     for (const point of this.points) {
       this.#renderPoint(point);
@@ -117,10 +129,14 @@ export default class BoardPresenter {
     pointPresenter.init(point);
   }
 
-  #handleViewAction = (actionType, updateType, update) => {
+  #handleViewAction = async (actionType, updateType, update) => {
     switch (actionType) {
       case UserAction.UPDATE_POINT:
-        this.#pointsModel.updatePoint(updateType, update);
+        try {
+          await this.#pointsModel.updatePoint(updateType, update);
+        } catch {
+          // Will add user feedback for failed requests in the next task.
+        }
         break;
       case UserAction.ADD_POINT:
         this.#pointsModel.addPoint(updateType, update);
@@ -134,9 +150,19 @@ export default class BoardPresenter {
   };
 
   #handleModelEvent = (updateType, data) => {
+    this.#syncModelData();
+    this.#newPointPresenter?.setData({
+      destinations: this.#destinations,
+      offers: this.#offers,
+    });
+
     switch (updateType) {
       case UpdateType.PATCH:
         this.#pointPresenters.get(data.id)?.init(data);
+        break;
+      case UpdateType.INIT:
+        this.#clearBoard();
+        this.#renderBoard();
         break;
       case UpdateType.MINOR:
         this.#clearBoard();
@@ -155,8 +181,9 @@ export default class BoardPresenter {
 
   #clearBoard() {
     this.#clearPointList();
-    this.#clearEmptyList();
+    this.#clearListMessage();
     remove(this.#sortComponent);
+    remove(this.#eventListComponent);
   }
 
   #handlePointModeChange = () => {
@@ -175,14 +202,31 @@ export default class BoardPresenter {
   }
 
   #renderEmptyList() {
-    this.#clearEmptyList();
-    this.#listEmptyComponent = new ListEmptyView({filterType: this.#filterModel.filter});
-    render(this.#listEmptyComponent, this.#boardContainer);
+    this.#clearListMessage();
+    this.#listMessageComponent = new ListEmptyView({filterType: this.#filterModel.filter});
+    render(this.#listMessageComponent, this.#boardContainer);
   }
 
-  #clearEmptyList() {
-    remove(this.#listEmptyComponent);
-    this.#listEmptyComponent = null;
+  #renderLoading() {
+    this.#clearListMessage();
+    this.#listMessageComponent = new LoadingView();
+    render(this.#listMessageComponent, this.#boardContainer);
+  }
+
+  #renderFailedLoad() {
+    this.#clearListMessage();
+    this.#listMessageComponent = new FailedLoadView();
+    render(this.#listMessageComponent, this.#boardContainer);
+  }
+
+  #clearListMessage() {
+    remove(this.#listMessageComponent);
+    this.#listMessageComponent = null;
+  }
+
+  #syncModelData() {
+    this.#destinations = this.#pointsModel.getDestinations();
+    this.#offers = this.#pointsModel.getOffers();
   }
 
   get points() {
