@@ -1,4 +1,4 @@
-import AbstractView from '../framework/view/abstract-view.js';
+import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
 import {TYPES} from '../mock/offers.js';
 import dayjs from 'dayjs';
 
@@ -147,8 +147,7 @@ function createEventEditTemplate(point, allDestinations, allOffers) {
   );
 }
 
-export default class EventEditView extends AbstractView {
-  #point = null;
+export default class EventEditView extends AbstractStatefulView {
   #pointDestinations = null;
   #pointOffers = null;
   #handleFormSubmit = null;
@@ -156,13 +155,32 @@ export default class EventEditView extends AbstractView {
 
   constructor({point = BLANK_POINT, pointDestinations, pointOffers, onFormSubmit, onCloseClick}) {
     super();
-    this.#point = point;
+    this._setState(point);
     this.#pointDestinations = pointDestinations;
     this.#pointOffers = pointOffers;
     this.#handleFormSubmit = onFormSubmit;
     this.#handleCloseClick = onCloseClick;
 
+    this._restoreHandlers();
+  }
+
+  get template() {
+    return createEventEditTemplate(this._state, this.#pointDestinations, this.#pointOffers);
+  }
+
+  _restoreHandlers() {
     this.element.querySelector('form').addEventListener('submit', this.#formSubmitHandler);
+
+    this.element.querySelectorAll('.event__type-input').forEach((input) => {
+      input.addEventListener('change', this.#typeChangeHandler);
+    });
+
+    const destinationInput = this.element.querySelector('.event__input--destination');
+    destinationInput.addEventListener('change', this.#destinationChangeHandler);
+
+    this.element.querySelectorAll('.event__offer-checkbox').forEach((input) => {
+      input.addEventListener('change', this.#offerChangeHandler);
+    });
 
     // Only if it's edit point will the button exist
     const rollupBtn = this.element.querySelector('.event__rollup-btn');
@@ -171,13 +189,40 @@ export default class EventEditView extends AbstractView {
     }
   }
 
-  get template() {
-    return createEventEditTemplate(this.#point, this.#pointDestinations, this.#pointOffers);
-  }
-
   #formSubmitHandler = (evt) => {
     evt.preventDefault();
     this.#handleFormSubmit();
+  };
+
+  #typeChangeHandler = (evt) => {
+    this.updateElement({
+      type: evt.target.value,
+      offers: [],
+    });
+  };
+
+  #destinationChangeHandler = (evt) => {
+    const selectedDestination = this.#pointDestinations.find((destination) => destination.name === evt.target.value);
+
+    this.updateElement({
+      destination: selectedDestination ? selectedDestination.id : null,
+    });
+  };
+
+  #offerChangeHandler = (evt) => {
+    const offerId = evt.target.name.replace('event-offer-', '');
+    const offers = [...this._state.offers];
+
+    if (evt.target.checked) {
+      offers.push(offerId);
+    } else {
+      const offerIndex = offers.indexOf(offerId);
+      if (offerIndex !== -1) {
+        offers.splice(offerIndex, 1);
+      }
+    }
+
+    this.updateElement({offers});
   };
 
   #closeClickHandler = (evt) => {
