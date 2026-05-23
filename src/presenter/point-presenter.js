@@ -1,6 +1,7 @@
-import {render, replace} from '../framework/render.js';
+import {render, replace, remove} from '../framework/render.js';
 import PointView from '../view/point-view.js';
 import EventEditView from '../view/event-edit-view.js';
+import {UserAction, UpdateType} from '../const.js';
 
 export default class PointPresenter {
   #pointContainer = null;
@@ -38,10 +39,20 @@ export default class PointPresenter {
 
     if (this.#mode === 'EDITING') {
       replace(this.#eventEditComponent, prevEventEditComponent);
+      remove(prevPointComponent);
+      remove(prevEventEditComponent);
       return;
     }
 
     replace(this.#pointComponent, prevPointComponent);
+    remove(prevPointComponent);
+    remove(prevEventEditComponent);
+  }
+
+  destroy() {
+    remove(this.#pointComponent);
+    remove(this.#eventEditComponent);
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
   }
 
   resetView() {
@@ -76,6 +87,7 @@ export default class PointPresenter {
       pointOffers: this.#offers,
       onFormSubmit: this.#formSubmitHandler,
       onCloseClick: this.#closeClickHandler,
+      onDeleteClick: this.#deleteClickHandler,
     });
   }
 
@@ -96,11 +108,17 @@ export default class PointPresenter {
   };
 
   #favoriteClickHandler = (updatedPoint) => {
-    this.#handleDataChange(updatedPoint);
+    this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.PATCH, updatedPoint);
   };
 
-  #formSubmitHandler = () => {
+  #formSubmitHandler = (updatedPoint) => {
+    this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.MINOR, updatedPoint);
     this.#replaceFormToPoint();
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
+  };
+
+  #deleteClickHandler = (point) => {
+    this.#handleDataChange(UserAction.DELETE_POINT, UpdateType.MINOR, point);
     document.removeEventListener('keydown', this.#escKeyDownHandler);
   };
 
