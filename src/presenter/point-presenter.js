@@ -108,16 +108,31 @@ export default class PointPresenter {
   };
 
   #favoriteClickHandler = (updatedPoint) => {
-    this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.PATCH, updatedPoint);
+    this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.PATCH, updatedPoint)
+      .catch(() => {
+        this.#pointComponent.shake();
+      });
   };
 
-  #formSubmitHandler = (updatedPoint) => {
-    this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.MINOR, updatedPoint);
+  #formSubmitHandler = async (updatedPoint) => {
+    this.#eventEditComponent.setSaving();
+
+    try {
+      await this.#handleDataChange(UserAction.UPDATE_POINT, UpdateType.MINOR, updatedPoint);
+    } catch {
+      this.#eventEditComponent.setAborting();
+    }
   };
 
-  #deleteClickHandler = (point) => {
-    this.#handleDataChange(UserAction.DELETE_POINT, UpdateType.MINOR, point);
-    document.removeEventListener('keydown', this.#escKeyDownHandler);
+  #deleteClickHandler = async (point) => {
+    this.#eventEditComponent.setDeleting();
+
+    try {
+      await this.#handleDataChange(UserAction.DELETE_POINT, UpdateType.MINOR, point);
+      document.removeEventListener('keydown', this.#escKeyDownHandler);
+    } catch {
+      this.#eventEditComponent.setAborting();
+    }
   };
 
   #closeClickHandler = () => {

@@ -60,9 +60,15 @@ export default class NewPointPresenter {
     this.#handleDestroy();
   }
 
-  #formSubmitHandler = (point) => {
-    this.#handleDataChange(UserAction.ADD_POINT, UpdateType.MINOR, point);
-    this.destroy();
+  #formSubmitHandler = async (point) => {
+    this.#eventEditComponent.setSaving();
+
+    try {
+      await this.#handleDataChange(UserAction.ADD_POINT, UpdateType.MINOR, point);
+      this.destroy();
+    } catch {
+      this.#eventEditComponent.setAborting();
+    }
   };
 
   #cancelClickHandler = () => {

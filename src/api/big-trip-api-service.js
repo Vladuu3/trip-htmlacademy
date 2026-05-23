@@ -1,6 +1,8 @@
 import ApiService from '../framework/api-service.js';
 
 const Method = {
+  DELETE: 'DELETE',
+  POST: 'POST',
   PUT: 'PUT',
 };
 
@@ -15,16 +17,23 @@ const adaptPointToClient = (point) => ({
   offers: point.offers.map((offerId) => String(offerId)),
 });
 
-const adaptPointToServer = (point) => ({
-  'id': point.id,
-  'base_price': point.basePrice,
-  'date_from': point.dateFrom,
-  'date_to': point.dateTo,
-  'is_favorite': point.isFavorite,
-  'destination': point.destination,
-  'offers': point.offers,
-  'type': point.type,
-});
+const adaptPointToServer = (point, includeId = true) => {
+  const adaptedPoint = {
+    'base_price': point.basePrice,
+    'date_from': point.dateFrom,
+    'date_to': point.dateTo,
+    'destination': point.destination,
+    'is_favorite': point.isFavorite,
+    'offers': point.offers,
+    'type': point.type,
+  };
+
+  if (includeId) {
+    adaptedPoint.id = point.id;
+  }
+
+  return adaptedPoint;
+};
 
 export default class BigTripApiService extends ApiService {
   async points() {
@@ -54,5 +63,24 @@ export default class BigTripApiService extends ApiService {
 
     const updatedPoint = await ApiService.parseResponse(response);
     return adaptPointToClient(updatedPoint);
+  }
+
+  async createPoint(point) {
+    const response = await this._load({
+      url: 'points',
+      method: Method.POST,
+      body: JSON.stringify(adaptPointToServer(point, false)),
+      headers: new Headers({'Content-Type': 'application/json'}),
+    });
+
+    const createdPoint = await ApiService.parseResponse(response);
+    return adaptPointToClient(createdPoint);
+  }
+
+  async deletePoint(point) {
+    await this._load({
+      url: `points/${point.id}`,
+      method: Method.DELETE,
+    });
   }
 }
