@@ -4,17 +4,44 @@ import EventEditView from '../view/event-edit-view.js';
 import PointView from '../view/point-view.js';
 import ListEmptyView from '../view/list-empty-view.js';
 import {render, replace} from '../framework/render.js';
+import dayjs from 'dayjs';
+
+const SortType = {
+  DAY: 'sort-day',
+  PRICE: 'sort-price',
+};
+
+const sortPointByDay = (pointA, pointB) => dayjs(pointA.dateFrom).diff(dayjs(pointB.dateFrom));
+const sortPointByPrice = (pointA, pointB) => pointB.basePrice - pointA.basePrice;
 
 export default class BoardPresenter {
   #boardContainer = null;
   #pointsModel = null;
 
-  #sortComponent = new SortView();
+  #handleSortTypeChange = (sortType) => {
+    if (this.#currentSortType === sortType) {
+      return;
+    }
+
+    this.#currentSortType = sortType;
+    this.#renderPoints();
+  };
+
+  #currentSortType = SortType.DAY;
+
+  #sortComponent = new SortView({
+    currentSortType: this.#currentSortType,
+    onSortTypeChange: this.#handleSortTypeChange,
+  });
+
   #eventListComponent = new EventListView();
+
   #listEmptyComponent = new ListEmptyView();
 
   #boardPoints = [];
+
   #destinations = [];
+
   #offers = [];
 
   constructor({boardContainer, pointsModel}) {
@@ -39,8 +66,14 @@ export default class BoardPresenter {
     render(this.#sortComponent, this.#boardContainer);
     render(this.#eventListComponent, this.#boardContainer);
 
-    for (let i = 0; i < this.#boardPoints.length; i++) {
-      this.#renderPoint(this.#boardPoints[i]);
+    this.#renderPoints();
+  }
+
+  #renderPoints() {
+    this.#eventListComponent.element.innerHTML = '';
+
+    for (const point of this.#getSortedPoints()) {
+      this.#renderPoint(point);
     }
   }
 
@@ -89,5 +122,17 @@ export default class BoardPresenter {
     }
 
     render(pointComponent, this.#eventListComponent.element);
+  }
+
+  #getSortedPoints() {
+    const sortedPoints = [...this.#boardPoints];
+
+    switch (this.#currentSortType) {
+      case SortType.PRICE:
+        return sortedPoints.sort(sortPointByPrice);
+      case SortType.DAY:
+      default:
+        return sortedPoints.sort(sortPointByDay);
+    }
   }
 }
