@@ -66,10 +66,8 @@ export default class PointPresenter {
 
   #createPointComponent() {
     const pointDestination = this.#destinations.find((destination) => destination.id === this.#point.destination);
-    const pointOffers = this.#offers
-      .find((offer) => offer.type === this.#point.type)
-      .offers
-      .filter((offer) => this.#point.offers.includes(offer.id));
+    const pointTypeOffers = this.#offers.find((offer) => offer.type === this.#point.type)?.offers ?? [];
+    const pointOffers = pointTypeOffers.filter((offer) => this.#point.offers.includes(offer.id));
 
     return new PointView({
       point: this.#point,

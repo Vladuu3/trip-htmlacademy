@@ -73,7 +73,7 @@ export default class TripInfoPresenter {
       return start.format('D MMM');
     }
 
-    return `${start.format('D MMM')}&nbsp;&mdash;&nbsp;${end.format('D MMM')}`;
+    return `${start.format('D MMM')} — ${end.format('D MMM')}`;
   }
 
   #computeTotalCost(points, offersData) {
