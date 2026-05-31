@@ -92,12 +92,20 @@ export default class PointPresenter {
   }
 
   #replacePointToForm() {
+    const prevEventEditComponent = this.#eventEditComponent;
+    this.#eventEditComponent = this.#createEventEditComponent();
+
     replace(this.#eventEditComponent, this.#pointComponent);
+    remove(prevEventEditComponent);
     this.#mode = 'EDITING';
   }
 
   #replaceFormToPoint() {
-    replace(this.#pointComponent, this.#eventEditComponent);
+    const prevEventEditComponent = this.#eventEditComponent;
+
+    replace(this.#pointComponent, prevEventEditComponent);
+    this.#eventEditComponent = this.#createEventEditComponent();
+    remove(prevEventEditComponent);
     this.#mode = 'DEFAULT';
   }
 

@@ -18,6 +18,10 @@ export default class NewPointPresenter {
     this.#handleDestroy = onDestroy;
   }
 
+  setPointContainer(pointContainer) {
+    this.#pointContainer = pointContainer;
+  }
+
   setData({destinations, offers}) {
     this.#destinations = destinations;
     this.#offers = offers;
@@ -28,12 +32,11 @@ export default class NewPointPresenter {
       return;
     }
 
-    const now = new Date();
     const point = {
       ...createBlankPoint(),
       id: Date.now().toString(),
-      dateFrom: now.toISOString(),
-      dateTo: now.toISOString(),
+      dateFrom: null,
+      dateTo: null,
     };
 
     this.#eventEditComponent = new EventEditView({

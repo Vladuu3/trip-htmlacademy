@@ -20,6 +20,12 @@ export default class TripInfoPresenter {
     const destinations = this.#pointsModel.getDestinations();
     const offers = this.#pointsModel.getOffers();
 
+    if (points.length === 0) {
+      remove(this.#tripInfoComponent);
+      this.#tripInfoComponent = null;
+      return;
+    }
+
     const title = this.#computeRouteTitle(points, destinations);
     const dates = this.#computeDates(points);
     const cost = this.#computeTotalCost(points, offers);
@@ -43,17 +49,15 @@ export default class TripInfoPresenter {
 
     const sorted = points.slice().sort((a, b) => dayjs(a.dateFrom).diff(dayjs(b.dateFrom)));
     const cities = sorted.map((p) => {
-      const dest = destinations.find((d) => d.id === p.destination);
+      const dest = destinations.find((d) => String(d.id) === String(p.destination));
       return dest ? dest.name : '';
     }).filter(Boolean);
 
-    const unique = [...new Set(cities)];
-
-    if (unique.length <= 3) {
-      return unique.join(' — ');
+    if (cities.length <= 3) {
+      return cities.join(' — ');
     }
 
-    return `${unique[0]} — … — ${unique[unique.length - 1]}`;
+    return `${cities[0]} — ... — ${cities[cities.length - 1]}`;
   }
 
   #computeDates(points) {
@@ -65,11 +69,11 @@ export default class TripInfoPresenter {
     const start = dayjs(sorted[0].dateFrom);
     const end = dayjs(sorted[sorted.length - 1].dateTo);
 
-    if (start.isSame(end, 'month')) {
-      return `${start.format('D')}&nbsp;&mdash;&nbsp;${end.format('D MMM')}`;
+    if (start.isSame(end, 'day')) {
+      return start.format('D MMM');
     }
 
-    return `${start.format('D MMM')} — ${end.format('D MMM')}`;
+    return `${start.format('D MMM')}&nbsp;&mdash;&nbsp;${end.format('D MMM')}`;
   }
 
   #computeTotalCost(points, offersData) {
@@ -83,7 +87,7 @@ export default class TripInfoPresenter {
       const offersList = typeOffers ? typeOffers.offers : [];
 
       const offersSum = (point.offers || [])
-        .map((offerId) => offersList.find((of) => of.id === offerId))
+        .map((offerId) => offersList.find((of) => String(of.id) === String(offerId)))
         .filter(Boolean)
         .reduce((s, of) => s + (Number(of.price) || 0), 0);
 

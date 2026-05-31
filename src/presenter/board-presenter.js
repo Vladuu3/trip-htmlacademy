@@ -15,7 +15,7 @@ const UI_BLOCKER_LOWER_LIMIT = 0;
 const UI_BLOCKER_UPPER_LIMIT = 500;
 
 const sortPointByDay = (pointA, pointB) => dayjs(pointA.dateFrom).diff(dayjs(pointB.dateFrom));
-const sortPointByPrice = (pointA, pointB) => pointB.basePrice - pointA.basePrice;
+const sortPointByTime = (pointA, pointB) => dayjs(pointB.dateTo).diff(dayjs(pointB.dateFrom)) - dayjs(pointA.dateTo).diff(dayjs(pointA.dateFrom));
 
 export default class BoardPresenter {
   #boardContainer = null;
@@ -46,6 +46,7 @@ export default class BoardPresenter {
     this.#currentSortType = sortType;
     this.#clearPointList();
     this.#renderPointList();
+    this.#syncSortViewState();
   };
 
   constructor({boardContainer, pointsModel, filterModel, onNewPointDestroy}) {
@@ -66,7 +67,15 @@ export default class BoardPresenter {
       destinations: this.#destinations,
       offers: this.#offers,
       onDataChange: this.#handleViewAction,
-      onDestroy: this.#onNewPointDestroy,
+      onDestroy: () => {
+        if (this.#onNewPointDestroy) {
+          this.#onNewPointDestroy();
+        }
+
+        if (this.points.length === 0) {
+          this.#renderEmptyList();
+        }
+      },
     });
 
     this.#sortComponent = new SortView({
@@ -81,6 +90,8 @@ export default class BoardPresenter {
     this.#currentSortType = SortType.DAY;
     this.#filterModel.setFilter(UpdateType.MAJOR, FilterType.EVERYTHING);
     this.#resetPointPresenters();
+    this.#newPointPresenter.setPointContainer(this.#eventListComponent.element);
+    this.#clearListMessage();
     this.#newPointPresenter.init();
   }
 
@@ -96,8 +107,9 @@ export default class BoardPresenter {
     }
 
     this.#clearListMessage();
-    render(this.#eventListComponent, this.#boardContainer);
     this.#renderSort();
+    render(this.#eventListComponent, this.#boardContainer);
+    this.#newPointPresenter?.setPointContainer(this.#eventListComponent.element);
     this.#renderPointList();
   }
 
@@ -108,6 +120,8 @@ export default class BoardPresenter {
     }
 
     render(this.#sortComponent, this.#boardContainer);
+    this.#sortComponent.restoreHandlers();
+    this.#syncSortViewState();
   }
 
   #renderPointList() {
@@ -234,6 +248,18 @@ export default class BoardPresenter {
     this.#listMessageComponent = null;
   }
 
+  #syncSortViewState() {
+    if (!this.#sortComponent) {
+      return;
+    }
+
+    const sortInputs = this.#sortComponent.element.querySelectorAll('input[name="trip-sort"]');
+
+    sortInputs.forEach((input) => {
+      input.checked = input.value === this.#currentSortType;
+    });
+  }
+
   #syncModelData() {
     this.#destinations = this.#pointsModel.getDestinations();
     this.#offers = this.#pointsModel.getOffers();
@@ -246,7 +272,9 @@ export default class BoardPresenter {
 
     switch (this.#currentSortType) {
       case SortType.PRICE:
-        return sortedPoints.sort(sortPointByPrice);
+        return sortedPoints.sort((a, b) => Number(b.basePrice) - Number(a.basePrice));
+      case SortType.TIME:
+        return sortedPoints.sort(sortPointByTime);
       case SortType.DAY:
       default:
         return sortedPoints.sort(sortPointByDay);

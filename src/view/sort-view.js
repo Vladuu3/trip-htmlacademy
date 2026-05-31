@@ -2,6 +2,7 @@ import AbstractView from '../framework/view/abstract-view.js';
 
 const SortType = {
   DAY: 'sort-day',
+  TIME: 'sort-time',
   PRICE: 'sort-price',
 };
 
@@ -18,7 +19,7 @@ function createSortTemplate(currentSortType) {
         <label class="trip-sort__btn" for="sort-event">Event</label>
       </div>
 
-      <div class="trip-sort__item  trip-sort__item--time">
+      <div class="trip-sort__item  trip-sort__item--time" data-sort-type="${SortType.TIME}">
         <input id="sort-time" class="trip-sort__input  visually-hidden" type="radio" name="trip-sort" value="sort-time">
         <label class="trip-sort__btn" for="sort-time">Time</label>
       </div>
@@ -44,8 +45,12 @@ export default class SortView extends AbstractView {
     super();
     this.#currentSortType = currentSortType;
     this.#handleSortTypeChange = onSortTypeChange;
+  }
 
-    this.element.querySelector('form').addEventListener('click', this.#sortTypeChangeHandler);
+  restoreHandlers() {
+    this.element.querySelectorAll('.trip-sort__btn').forEach((label) => {
+      label.addEventListener('click', this.#sortTypeChangeHandler);
+    });
   }
 
   get template() {

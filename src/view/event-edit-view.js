@@ -22,6 +22,16 @@ const createBlankPoint = () => ({
   ...BLANK_POINT,
 });
 
+const normalizeDestinationName = (name) => String(name ?? '').trim().toLowerCase();
+
+const findDestinationByName = (destinations, name) => destinations
+  .find((destination) => normalizeDestinationName(destination.name) === normalizeDestinationName(name))
+  ?? destinations.find((destination) => normalizeDestinationName(destination.name).includes(normalizeDestinationName(name)))
+  ?? destinations.find((destination) => normalizeDestinationName(name).includes(normalizeDestinationName(destination.name)));
+
+const findDestinationById = (destinations, destinationId) => destinations
+  .find((destination) => String(destination.id) === String(destinationId));
+
 function createEventEditOffersTemplate(type, offers, pointOffers, isDisabled = false) {
   const currentTypeOffers = offers.find((offer) => offer.type === type)?.offers;
   if (!currentTypeOffers || currentTypeOffers.length === 0) {
@@ -57,20 +67,34 @@ function createEventEditDestinationTemplate(destination) {
     return '';
   }
 
-  const picturesTemplate = destination.pictures.map((picture) => (
+  const hasDescription = Boolean(destination.description?.trim());
+  const hasPictures = Array.isArray(destination.pictures) && destination.pictures.length > 0;
+
+  if (!hasDescription && !hasPictures) {
+    return '';
+  }
+
+  const picturesTemplate = (destination.pictures || []).map((picture) => (
     `<img class="event__photo" src="${picture.src}" alt="${picture.description}">`
   )).join('');
+
+  const descriptionTemplate = hasDescription
+    ? `<p class="event__destination-description">${destination.description}</p>`
+    : '';
+
+  const photosTemplate = hasPictures
+    ? `<div class="event__photos-container">
+        <div class="event__photos-tape">
+          ${picturesTemplate}
+        </div>
+      </div>`
+    : '';
 
   return (
     `<section class="event__section  event__section--destination">
       <h3 class="event__section-title  event__section-title--destination">Destination</h3>
-      <p class="event__destination-description">${destination.description}</p>
-
-      <div class="event__photos-container">
-        <div class="event__photos-tape">
-          ${picturesTemplate}
-        </div>
-      </div>
+      ${descriptionTemplate}
+      ${photosTemplate}
     </section>`
   );
 }
@@ -99,7 +123,8 @@ function createEventEditTemplate(point, allDestinations, allOffers) {
     `<option value="${dest.name}"></option>`
   )).join('');
 
-  const pointDestination = allDestinations.find((dest) => dest.id === destination);
+  const pointDestination = findDestinationById(allDestinations, destination);
+  const destinationInputValue = point.destinationName ?? (pointDestination ? pointDestination.name : '');
   const defaultResetButtonText = pointDestination ? 'Delete' : 'Cancel';
   const currentResetButtonText = resetButtonText ?? defaultResetButtonText;
 
@@ -132,7 +157,7 @@ function createEventEditTemplate(point, allDestinations, allOffers) {
             <label class="event__label  event__type-output" for="event-destination-1">
               ${type.charAt(0).toUpperCase() + type.slice(1)}
             </label>
-            <input class="event__input  event__input--destination" id="event-destination-1" type="text" name="event-destination" value="${pointDestination ? pointDestination.name : ''}" list="destination-list-1" required ${isDisabled ? 'disabled' : ''}>
+            <input class="event__input  event__input--destination" id="event-destination-1" type="text" name="event-destination" value="${destinationInputValue}" list="destination-list-1" required ${isDisabled ? 'disabled' : ''}>
             <datalist id="destination-list-1">
               ${destinationListTemplate}
             </datalist>
@@ -155,7 +180,7 @@ function createEventEditTemplate(point, allDestinations, allOffers) {
           </div>
 
           <button class="event__save-btn  btn  btn--blue" type="submit" ${isDisabled ? 'disabled' : ''}>${submitButtonText}</button>
-          <button class="event__reset-btn" type="reset" ${isDisabled ? 'disabled' : ''}>${currentResetButtonText}</button>
+          <button class="event__reset-btn" type="reset">${currentResetButtonText}</button>
           ${pointDestination ? `<button class="event__rollup-btn" type="button" ${isDisabled ? 'disabled' : ''}>
             <span class="visually-hidden">Open event</span>
           </button>` : ''}
@@ -192,14 +217,12 @@ export default class EventEditView extends AbstractStatefulView {
 
   setSaving() {
     this.updateElement({
-      isDisabled: true,
       submitButtonText: 'Saving...',
     });
   }
 
   setDeleting() {
     this.updateElement({
-      isDisabled: true,
       resetButtonText: 'Deleting...',
     });
   }
@@ -255,6 +278,15 @@ export default class EventEditView extends AbstractStatefulView {
   #formSubmitHandler = (evt) => {
     evt.preventDefault();
 
+    const destinationInput = this.element.querySelector('.event__input--destination');
+    const selectedDestination = findDestinationByName(this.#pointDestinations, destinationInput.value);
+
+    // Keep model data in sync with the latest text before validation/submission.
+    this._setState({
+      destination: selectedDestination ? selectedDestination.id : null,
+      destinationName: destinationInput.value,
+    });
+
     if (!this.#isFormValid()) {
       return;
     }
@@ -270,19 +302,26 @@ export default class EventEditView extends AbstractStatefulView {
   };
 
   #destinationChangeHandler = (evt) => {
-    const selectedDestination = this.#pointDestinations.find((destination) => destination.name === evt.target.value);
+    const selectedDestination = findDestinationByName(this.#pointDestinations, evt.target.value);
 
     evt.target.setCustomValidity(selectedDestination ? '' : 'Please choose a destination from the list');
     evt.target.reportValidity();
 
     this.updateElement({
       destination: selectedDestination ? selectedDestination.id : null,
+      destinationName: evt.target.value,
     });
   };
 
   #destinationInputHandler = (evt) => {
-    const selectedDestination = this.#pointDestinations.find((destination) => destination.name === evt.target.value);
+    const selectedDestination = findDestinationByName(this.#pointDestinations, evt.target.value);
     evt.target.setCustomValidity(selectedDestination ? '' : 'Please choose a destination from the list');
+
+    // Avoid losing destination after datepicker-triggered rerenders before blur/change fires.
+    this._setState({
+      destination: selectedDestination ? selectedDestination.id : null,
+      destinationName: evt.target.value,
+    });
   };
 
   #offerChangeHandler = (evt) => {
@@ -331,7 +370,7 @@ export default class EventEditView extends AbstractStatefulView {
     const destinationInput = this.element.querySelector('.event__input--destination');
     const priceInput = this.element.querySelector('.event__input--price');
 
-    const selectedDestination = this.#pointDestinations.find((destination) => destination.name === destinationInput.value);
+    const selectedDestination = findDestinationByName(this.#pointDestinations, destinationInput.value);
     destinationInput.setCustomValidity(selectedDestination ? '' : 'Please choose a destination from the list');
 
     const isDestinationValid = destinationInput.reportValidity();
@@ -346,6 +385,7 @@ export default class EventEditView extends AbstractStatefulView {
     delete point.isDisabled;
     delete point.submitButtonText;
     delete point.resetButtonText;
+    delete point.destinationName;
 
     return {
       ...point,
@@ -361,12 +401,14 @@ export default class EventEditView extends AbstractStatefulView {
       dateFormat: FLATPICKR_DATE_FORMAT,
       enableTime: true,
       'time_24hr': true,
-      defaultDate: this._state.dateFrom ? dayjs(this._state.dateFrom).toDate() : null,
+      defaultDate: this._state.dateFrom ? dayjs(this._state.dateFrom).toDate() : undefined,
       maxDate: this._state.dateTo ? dayjs(this._state.dateTo).toDate() : null,
       onChange: ([selectedDate]) => {
-        this.updateElement({
+        this._setState({
           dateFrom: selectedDate ? selectedDate.toISOString() : null,
         });
+
+        this.#endDatepicker?.set('minDate', selectedDate ?? null);
       },
     });
 
@@ -374,12 +416,14 @@ export default class EventEditView extends AbstractStatefulView {
       dateFormat: FLATPICKR_DATE_FORMAT,
       enableTime: true,
       'time_24hr': true,
-      defaultDate: this._state.dateTo ? dayjs(this._state.dateTo).toDate() : null,
+      defaultDate: this._state.dateTo ? dayjs(this._state.dateTo).toDate() : undefined,
       minDate: this._state.dateFrom ? dayjs(this._state.dateFrom).toDate() : null,
       onChange: ([selectedDate]) => {
-        this.updateElement({
+        this._setState({
           dateTo: selectedDate ? selectedDate.toISOString() : null,
         });
+
+        this.#startDatepicker?.set('maxDate', selectedDate ?? null);
       },
     });
   }
