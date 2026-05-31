@@ -2,6 +2,7 @@ import {render, replace, remove} from '../framework/render.js';
 import PointView from '../view/point-view.js';
 import EventEditView from '../view/event-edit-view.js';
 import {UserAction, UpdateType} from '../const.js';
+import {createEscapeKeyHandler} from '../utils/keyboard.js';
 
 export default class PointPresenter {
   #pointContainer = null;
@@ -146,10 +147,5 @@ export default class PointPresenter {
     document.removeEventListener('keydown', this.#escKeyDownHandler);
   };
 
-  #escKeyDownHandler = (evt) => {
-    if (evt.key === 'Escape') {
-      evt.preventDefault();
-      this.resetView();
-    }
-  };
+  #escKeyDownHandler = createEscapeKeyHandler(() => this.resetView());
 }

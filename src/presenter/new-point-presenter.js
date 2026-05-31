@@ -1,6 +1,7 @@
 import {render, remove, RenderPosition} from '../framework/render.js';
 import EventEditView, {createBlankPoint} from '../view/event-edit-view.js';
 import {UserAction, UpdateType} from '../const.js';
+import {createEscapeKeyHandler} from '../utils/keyboard.js';
 
 export default class NewPointPresenter {
   #pointContainer = null;
@@ -78,10 +79,5 @@ export default class NewPointPresenter {
     this.destroy();
   };
 
-  #escKeyDownHandler = (evt) => {
-    if (evt.key === 'Escape') {
-      evt.preventDefault();
-      this.destroy();
-    }
-  };
+  #escKeyDownHandler = createEscapeKeyHandler(() => this.destroy());
 }
